@@ -11,9 +11,9 @@ class Transaction(models.Model):
     time_created = models.IntegerField(default=0, blank=True, null=True)
     peercoin_address = models.CharField(max_length=255, default="", blank=True, null=True)
 
-    value_retrieved = models.BooleanField(default=False)
+    payload_retrieved = models.BooleanField(default=False)
     pm_key = models.CharField(max_length=255, default="", blank=True, null=True)
-    pm_value = models.TextField(blank=True, null=True)
+    pm_payload = models.TextField(blank=True, null=True)
 
     def __unicode__(self):
         return u'%s' % (self.tx_id)

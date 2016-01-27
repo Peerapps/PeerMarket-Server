@@ -11,39 +11,35 @@ import peerapps.settings
 
 import shutil
 
-def download_blg(rpc_raw, key, from_address):
+def download_payload(rpc_raw, key, from_address):
     found_data = external_db.get_data(key)
 
     if not found_data:
-        print "Unable to retrieve blog post, skipping"
+        print "Unable to retrieve payload, skipping"
         return None
 
     formatted_message = format_incoming(found_data)
     try:
         verified_message = verify_and_strip_signature(rpc_raw, formatted_message, from_address)
     except AssertionError:
-        print "Signature invalid, skip blog post."
+        print "Signature invalid, skip payload."
         return None
     except AttributeError:
-        print "Unable to pull blog post from external data source."
+        print "Unable to pull payload from external data source."
         return None
 
     return verified_message
 
 
-def download_blgs(rpc_raw):
-    from peerblog.models import Subscription, Blog
-    db_blogs = Blog.objects.filter(msg="").order_by('-time')
-    my_addresses = [x['address'] for x in rpc_raw.listunspent(0)]
-    for b in db_blogs:
-        if b.address_from in my_addresses or Subscription.objects.filter(address=b.address_from).exists():
-            blog_post = download_blg(rpc_raw, b.key, b.address_from)
-            if blog_post is None:
-                #delete it or something.
-                pass
-
-            print "Saved new blog message", blog_post
-            Blog.objects.filter(key=b.key).update(msg=blog_post)
+def download_payloads(rpc_raw):
+    from peermarket.models import Listing, Offer, Message, Transaction
+    transactions_waiting = Transaction.objects.filter(payload_retrieved=False).order_by('-time_created')
+    for b in transactions_waiting:
+        transaction_details = download_payload(rpc_raw, b.key, b.address_from)
+        print "Pulled new transaction details:", transaction_details
+        b.pm_payload = transaction_details
+        b.save()
+        #TODO Parse transaction details, look for db changes (e.g. new listings) and do those.
 
 def get_service_status():
     """

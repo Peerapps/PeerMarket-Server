@@ -99,7 +99,7 @@ def parse_transaction(rpc_raw, tx_id, block_index):
                         "block_number_created": block_index,
                         "time_created": int(time.time()),
                         "pm_key": op_return_data[2:],
-                        "pm_value": ""
+                        "pm_payload": ""
                     })
                     new_blog.save()
 

@@ -56,6 +56,7 @@ class mainFrame(wx.Frame):
     def StartAsyncThreads(self):
         thread.start_new_thread(start_webserver, ())
         thread.start_new_thread(scan_blockchain, ())
+        thread.start_new_thread(download_payloads_thread, ())
 
 class MyTaskBarIcon(wx.TaskBarIcon):
     def __init__(self, frame):
@@ -152,6 +153,15 @@ def scan_blockchain():
                 time.sleep(10)
         except:
             app.wxPeerApps.statusDisconnected()
+        time.sleep(2)
+
+def download_payloads_thread():
+    """
+        For any keys we've picked up in the blockchain, download the corresponding payloads.
+    """
+    rpc_raw = rpcRawProxy(helpers.get_rpc_url())
+    while True:
+        helpers.download_payloads(rpc_raw)
         time.sleep(2)
 
 from django.core import management
