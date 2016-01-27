@@ -1,11 +1,10 @@
 from bitcoinrpc.authproxy import JSONRPCException
 
 import json
-import datetime
-
-from peermarket.opreturn_scanner import parse as peermarket_moduleparse
+import time
 
 from setup.models import BlockchainScan, MemPoolScan
+from peermarket.models import Transaction
 
 def get_blockchain_scan_status(rpc_raw):
     blockcount = rpc_raw.getblockcount()
@@ -16,7 +15,6 @@ def get_blockchain_scan_status(rpc_raw):
     current_index = bkscan.last_index
     on_latest_block = True if current_index >= blockcount else False
     return on_latest_block, blockcount - current_index
-
 
 def scan_block(rpc_raw):
     blockcount = rpc_raw.getblockcount()
@@ -44,8 +42,7 @@ def scan_block(rpc_raw):
         bi = rpc_raw.getblock(block_hash) #get list of tx_ids in block
         for tx_id in bi['tx']:
             if tx_id not in processed_transactions: #only process transactions once
-                block_time = bi['time'] if 'time' in bi else datetime.datetime.now()
-                parse_transaction(rpc_raw, tx_id, current_index, block_time)
+                parse_transaction(rpc_raw, tx_id, current_index)
 
         current_index += 1
         BlockchainScan.objects.all().update(last_index=current_index)
@@ -66,7 +63,7 @@ def scan_block(rpc_raw):
         count_new = 0
         for tx_id in unconfirmed_transactions:
             if tx_id not in processed_transactions:
-                parse_transaction(rpc_raw, tx_id, current_index, datetime.datetime.now())
+                parse_transaction(rpc_raw, tx_id, current_index)
                 processed_transactions[tx_id] = 1
                 count_new += 1
         print "(found", count_new, "transactions)"
@@ -76,7 +73,7 @@ def scan_block(rpc_raw):
         return True, blockcount - current_index
     return False, blockcount - current_index
 
-def parse_transaction(rpc_raw, tx_id, block_index, block_time):
+def parse_transaction(rpc_raw, tx_id, block_index):
     tx_info = rpc_raw.decoderawtransaction(rpc_raw.getrawtransaction(tx_id))
     for vout in tx_info['vout']:
         if vout['scriptPubKey']['asm'].startswith("OP_RETURN"):
@@ -93,7 +90,18 @@ def parse_transaction(rpc_raw, tx_id, block_index, block_time):
                     addresses.append(input_raw_tx['vout'][inp['vout']]['scriptPubKey']['addresses'][0])
                 from_user_address = addresses[0]
 
-                peermarket_moduleparse(rpc_raw, op_return_data, from_user_address, block_index, tx_id, block_time)
+                if not Transaction.objects.filter(key=op_return_data[2:]).exists():
+                    print "Found transaction"
+
+                    new_blog = Transaction(**{
+                        "tx_id": tx_id,
+                        "peercoin_address": from_user_address,
+                        "block_number_created": block_index,
+                        "time_created": int(time.time()),
+                        "pm_key": op_return_data[2:],
+                        "pm_value": ""
+                    })
+                    new_blog.save()
 
 
 def submit_opreturn(rpc_connection, address, data):
