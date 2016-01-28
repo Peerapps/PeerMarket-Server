@@ -11,8 +11,8 @@ import external_db
 
 def submit_transactions(request):
     """
-        request.POST = {
-            "transactions": "[
+        request.POST = "{
+            "transactions": [
             {
                 'peercoin_address': '',
                 'raw_transaction': '',
@@ -22,8 +22,8 @@ def submit_transactions(request):
             {
                 ...
             }
-            ]"
-        }
+            ]
+        }"
     """
     return HttpResponse(json.dumps({
         "status": "success"

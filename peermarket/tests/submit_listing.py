@@ -9,7 +9,8 @@ from bitcoinrpc.authproxy import JSONRPCException, AuthServiceProxy as rpcRawPro
 from bitcoin.rpc import Proxy as rpcProcessedProxy
 import external_db
 import helpers, blockchain_func
-from django.test import TestCase
+#from django.test import TestCase
+import json
 
 '''
 def submit_transactions(request):
@@ -35,7 +36,15 @@ def submit_transactions(request):
 
 
 from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
-message = "Test message to post to blockchain"
+message = json.dumps({
+    'new_listing': {
+        'peercoin_address': from_address,
+        'category': 'Neopets',
+        'subcategory': 'Neopoints',
+        'quantity': '1000000',
+        'requested_peercoin': '10',
+    }
+})
 rpc_raw = rpcRawProxy(helpers.get_rpc_url())
 
 #rpc_raw.walletpassphrase(request.POST['wallet_passphrase'], 60)
