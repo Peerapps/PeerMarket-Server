@@ -50,6 +50,32 @@ def process_payload(transaction, payload_str):
                 }
                 new_message = Message(**message_details)
                 new_message.save()
+
+        elif db_query['action'] == 'new_offer':
+            offer_details = {
+                "tx_id": transaction.tx_id,
+                "listing_tx_id": db_query['listing_tx_id'],
+                "quantity": db_query['quantity'],
+                "offered_peercoin": db_query['offered_peercoin'],
+                "peercoin_address": transaction.peercoin_address,
+                "block_number_created": transaction.block_number_created,
+                "time_created": transaction.time_created
+            }
+            offer_details = Offer(**offer_details)
+            offer_details.save()
+
+            if db_query.get('message', ''):
+                message_details = {
+                    "tx_id": transaction.tx_id,
+                    "offer_tx_id": transaction.tx_id,
+                    "peercoin_address": transaction.peercoin_address,
+                    "block_number_created": transaction.block_number_created,
+                    "time_created": transaction.time_created,
+                    "message": db_query['message']
+                }
+                new_message = Message(**message_details)
+                new_message.save()
+
         else:
             raise BadPeermarketTransaction('Unable to parse db_query requested in: '+str(db_query))
 
