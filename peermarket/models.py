@@ -12,7 +12,7 @@ class Transaction(models.Model):
     peercoin_address = models.CharField(max_length=255, default="", blank=True, null=True)
 
     payload_retrieved = models.BooleanField(default=False)
-    pm_key = models.CharField(max_length=255, default="", blank=True, null=True)
+    pm_key = models.CharField(max_length=255, db_index=True, default="", blank=True, null=True)
     pm_payload = models.TextField(blank=True, null=True)
 
     def __unicode__(self):

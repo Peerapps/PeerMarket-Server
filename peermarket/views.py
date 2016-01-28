@@ -2,7 +2,6 @@ from django.shortcuts import render
 from django.http import HttpResponse
 import json
 from django.db.models import Q
-from models import Subscription, Blog
 
 import helpers, blockchain_func
 from bitcoin.rpc import Proxy as rpcProcessedProxy

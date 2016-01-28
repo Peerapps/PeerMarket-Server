@@ -12,29 +12,6 @@ import helpers, blockchain_func
 #from django.test import TestCase
 import json
 
-'''
-def submit_transactions(request):
-    """
-        request.POST = {
-            "transactions": "[
-            {
-                'peercoin_address': '',
-                'raw_transaction': '',
-                'signed': '',
-                'payload': ''
-            },
-            {
-                ...
-            }
-            ]"
-        }
-    """
-    return HttpResponse(json.dumps({
-        "status": "success"
-    }, default=helpers.json_custom_parser), content_type='application/json')
-'''
-
-
 from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
 message = json.dumps({
     'new_listing': {
@@ -43,6 +20,7 @@ message = json.dumps({
         'subcategory': 'Neopoints',
         'quantity': '1000000',
         'requested_peercoin': '10',
+        'message': "The exchange will be made like so: You create a Neopets trade, I'll bid the currency on it, you accept. Contact me via Signal @ 212 867 5309"
     }
 })
 rpc_raw = rpcRawProxy(helpers.get_rpc_url())

@@ -17,7 +17,7 @@ def get_blockchain_scan_status(rpc_raw):
     on_latest_block = True if current_index >= blockcount else False
     return on_latest_block, blockcount - current_index
 
-def scan_block(rpc_raw):
+def scan_block(rpc_raw, scan_mempool_only=False):
     blockcount = rpc_raw.getblockcount()
     bkscan = BlockchainScan.objects.all().first() #Attempt to pick up where we left off.
     if not bkscan: #First scan!
@@ -27,7 +27,7 @@ def scan_block(rpc_raw):
     on_latest_block = True if current_index >= blockcount else False
 
     processed_transactions = {}
-    if on_latest_block:
+    if on_latest_block or scan_mempool_only:
         #If we are on the latest block, we'll be scanning the mempool later
         mpscan = MemPoolScan.objects.all().first()
         if not mpscan:
@@ -37,27 +37,28 @@ def scan_block(rpc_raw):
         #get tx_ids we already scanned in mempool.
         processed_transactions = json.loads(mpscan.txids_scanned)
 
-    try:
-        block_hash = rpc_raw.getblockhash(current_index) #convert block index to hash
-        print "...scanning block", current_index
-        bi = rpc_raw.getblock(block_hash) #get list of tx_ids in block
-        for tx_id in bi['tx']:
-            if tx_id not in processed_transactions: #only process transactions once
-                parse_transaction(rpc_raw, tx_id, current_index)
+    if not scan_mempool_only:
+        try:
+            block_hash = rpc_raw.getblockhash(current_index) #convert block index to hash
+            print "...scanning block", current_index
+            bi = rpc_raw.getblock(block_hash) #get list of tx_ids in block
+            for tx_id in bi['tx']:
+                if tx_id not in processed_transactions: #only process transactions once
+                    parse_transaction(rpc_raw, tx_id, current_index)
 
-        current_index += 1
-        BlockchainScan.objects.all().update(last_index=current_index)
+            current_index += 1
+            BlockchainScan.objects.all().update(last_index=current_index)
 
-        if on_latest_block:
-            print "wiping mempool"
-            #wipe mempool scan (assume mempool transactions were added to this block)
-            MemPoolScan.objects.all().update(txids_scanned="{}")
-            processed_transactions = {}
+            if on_latest_block:
+                print "wiping mempool"
+                #wipe mempool scan (assume mempool transactions were added to this block)
+                MemPoolScan.objects.all().update(txids_scanned="{}")
+                processed_transactions = {}
 
-    except JSONRPCException:
-        pass #at last block
+        except JSONRPCException:
+            pass #at last block
 
-    if on_latest_block:
+    if on_latest_block or scan_mempool_only:
         #Let's scan that mempool!
         print "processing mempool..."
         unconfirmed_transactions = rpc_raw.getrawmempool()
@@ -91,7 +92,7 @@ def parse_transaction(rpc_raw, tx_id, block_index):
                     addresses.append(input_raw_tx['vout'][inp['vout']]['scriptPubKey']['addresses'][0])
                 from_user_address = addresses[0]
 
-                if not Transaction.objects.filter(key=op_return_data[2:]).exists():
+                if not Transaction.objects.filter(pm_key=op_return_data[2:]).exists():
                     print "Found transaction"
 
                     new_blog = Transaction(**{
