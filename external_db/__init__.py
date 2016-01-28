@@ -38,7 +38,8 @@ def get_data(key):
                 data = None #Can occur from someone making an invalid key
 
         if data:
-            print "data", data
+            print " data", data
+            print
             break
         
     return data

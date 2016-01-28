@@ -9,10 +9,13 @@ def get_data(key):
     headers = {
         'User-Agent': get_random_useragent()
     }
-    url = "http://pastebin.com/raw.php?i="+key
+    url = "http://pastebin.com/raw/"+key
     print "hitting ", url
     r = requests.get(url, headers=headers)
     if "Pastebin.com Unknown Paste ID" in r.text:
+        print "Unable to pull from pastebin."
+        return None
+    elif "Error with this ID" in r.text:
         print "Unable to pull from pastebin."
         return None
     print "Pulled from pastebin"

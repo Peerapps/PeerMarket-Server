@@ -14,3 +14,5 @@ import json
 
 rpc_raw = rpcRawProxy(helpers.get_rpc_url())
 blockchain_func.scan_block(rpc_raw, scan_mempool_only=True)
+
+helpers.download_payloads(rpc_raw)

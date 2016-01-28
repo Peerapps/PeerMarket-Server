@@ -8,8 +8,62 @@ from bitcoinrpc.authproxy import AuthServiceProxy
 import external_db
 import time
 import peerapps.settings
+import json
+from peermarket.models import Listing, Offer, Message, Transaction
 
 import shutil
+
+def process_payload(transaction, payload_str):
+    try:
+        payload = json.loads(payload_str)
+    except:
+        raise ValueError('Unable to process json string from payload: '+payload_str)
+
+    for db_query in payload:
+
+        if 'action' not in db_query:
+            raise ValueError('Unable to detect action requested in: '+str(db_query))
+
+        if db_query['action'] == 'new_listing':
+            listing_details = {
+                "tx_id": transaction.tx_id,
+                "category": db_query['category'],
+                "subcategory": db_query['subcategory'],
+                "quantity": db_query['quantity'],
+                "requested_peercoin": db_query['requested_peercoin'],
+                "peercoin_address": transaction.peercoin_address,
+                "block_number_created": transaction.block_number_created,
+                "time_created": transaction.time_created
+            }
+            new_listing = Listing(**listing_details)
+            new_listing.save()
+
+            if db_query.get('message', ''):
+                message_details = {
+                    "tx_id": transaction.tx_id,
+                    "listing_tx_id": transaction.tx_id,
+                    "peercoin_address": transaction.peercoin_address,
+                    "block_number_created": transaction.block_number_created,
+                    "time_created": transaction.time_created,
+                    "message": db_query['message']
+                }
+                new_message = Message(**message_details)
+                new_message.save()
+        else:
+            raise ValueError('Unable to parse db_query requested in: '+str(db_query))
+
+'''
+
+{
+    'action': 'new_listing',
+    'peercoin_address': from_address,
+    'category': 'Neopets',
+    'subcategory': 'Neopoints',
+    'quantity': '1000000',
+    'requested_peercoin': '10',
+    'message': "The exchange will be made like so: You create a Neopets trade, I'll bid the currency on it, you accept. Contact me via Signal @ 212 867 5309"
+}
+'''
 
 def download_payload(rpc_raw, key, from_address):
     found_data = external_db.get_data(key)
@@ -31,13 +85,15 @@ def download_payload(rpc_raw, key, from_address):
     return verified_message
 
 def download_payloads(rpc_raw):
-    from peermarket.models import Listing, Offer, Message, Transaction
     transactions_waiting = Transaction.objects.filter(payload_retrieved=False).order_by('-time_created')
-    for b in transactions_waiting:
-        transaction_details = download_payload(rpc_raw, b.key, b.address_from)
-        print "Pulled new transaction details:", transaction_details
-        b.pm_payload = transaction_details
-        b.save()
+    for transaction in transactions_waiting:
+        payload_str = download_payload(rpc_raw, transaction.pm_key, transaction.peercoin_address)
+        print
+        print "***Pulled new payload:", payload_str
+        transaction.pm_payload = payload_str
+        transaction.payload_retrieved = True
+        transaction.save()
+        process_payload(transaction, payload_str)
         #TODO Parse transaction details, look for db changes (e.g. new listings) and do those.
 
 def get_service_status():

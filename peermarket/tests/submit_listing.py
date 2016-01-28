@@ -13,8 +13,9 @@ import helpers, blockchain_func
 import json
 
 from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
-message = json.dumps({
-    'new_listing': {
+message = json.dumps([
+    {
+        'action': 'new_listing',
         'peercoin_address': from_address,
         'category': 'Neopets',
         'subcategory': 'Neopoints',
@@ -22,7 +23,7 @@ message = json.dumps({
         'requested_peercoin': '10',
         'message': "The exchange will be made like so: You create a Neopets trade, I'll bid the currency on it, you accept. Contact me via Signal @ 212 867 5309"
     }
-})
+])
 rpc_raw = rpcRawProxy(helpers.get_rpc_url())
 
 #rpc_raw.walletpassphrase(request.POST['wallet_passphrase'], 60)
