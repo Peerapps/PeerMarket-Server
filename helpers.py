@@ -10,6 +10,7 @@ import time
 import peerapps.settings
 import json
 from peermarket.models import Listing, Offer, Message, Transaction
+from peermarket.errors import BadPeermarketTransaction
 
 import shutil
 
@@ -17,12 +18,12 @@ def process_payload(transaction, payload_str):
     try:
         payload = json.loads(payload_str)
     except:
-        raise ValueError('Unable to process json string from payload: '+payload_str)
+        raise BadPeermarketTransaction('Unable to process json string from payload: '+str(payload_str))
 
     for db_query in payload:
 
         if 'action' not in db_query:
-            raise ValueError('Unable to detect action requested in: '+str(db_query))
+            raise BadPeermarketTransaction('Unable to detect action requested in: '+str(db_query))
 
         if db_query['action'] == 'new_listing':
             listing_details = {
@@ -50,20 +51,7 @@ def process_payload(transaction, payload_str):
                 new_message = Message(**message_details)
                 new_message.save()
         else:
-            raise ValueError('Unable to parse db_query requested in: '+str(db_query))
-
-'''
-
-{
-    'action': 'new_listing',
-    'peercoin_address': from_address,
-    'category': 'Neopets',
-    'subcategory': 'Neopoints',
-    'quantity': '1000000',
-    'requested_peercoin': '10',
-    'message': "The exchange will be made like so: You create a Neopets trade, I'll bid the currency on it, you accept. Contact me via Signal @ 212 867 5309"
-}
-'''
+            raise BadPeermarketTransaction('Unable to parse db_query requested in: '+str(db_query))
 
 def download_payload(rpc_raw, key, from_address):
     found_data = external_db.get_data(key)
@@ -93,8 +81,14 @@ def download_payloads(rpc_raw):
         transaction.pm_payload = payload_str
         transaction.payload_retrieved = True
         transaction.save()
-        process_payload(transaction, payload_str)
-        #TODO Parse transaction details, look for db changes (e.g. new listings) and do those.
+
+        try:
+            process_payload(transaction, payload_str)
+        except BadPeermarketTransaction as e:
+            print e.message
+
+        transaction.payload_executed = True
+        transaction.save()
 
 def get_service_status():
     """

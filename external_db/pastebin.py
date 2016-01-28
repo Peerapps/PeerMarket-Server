@@ -18,6 +18,9 @@ def get_data(key):
     elif "Error with this ID" in r.text:
         print "Unable to pull from pastebin."
         return None
+    elif "This page has been removed" in r.text:
+        print "Unable to pull from pastebin."
+        return None
     print "Pulled from pastebin"
     return r.text
 

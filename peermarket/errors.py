@@ -3,3 +3,6 @@ class PeerMarketError(Exception):
 
 class PeercoinError(Exception):
     pass
+
+class BadPeermarketTransaction(Exception):
+    pass
