@@ -223,7 +223,7 @@ def json_custom_parser(obj):
         A custom json parser to handle json.dumps calls properly for Decimal and Datetime data types.
     """
     if isinstance(obj, Decimal):
-        return str(obj)
+        return '{0:f}'.format(obj)
     elif isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
         return time.mktime(obj.timetuple())
     else:

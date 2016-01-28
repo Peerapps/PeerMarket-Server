@@ -1,6 +1,6 @@
 from django.db import models
 
-#RAW DATA FROM BLOCKCHAIN/external data stores
+###RAW DATA FROM BLOCKCHAIN/external data stores###
 
 class Transaction(models.Model):
     """
@@ -23,7 +23,7 @@ class Transaction(models.Model):
         verbose_name_plural = 'Transactions'
         app_label = "peermarket"
 
-#PROCESSED DATA
+###PROCESSED DATA###
 
 class Listing(models.Model):
     """

@@ -5,6 +5,7 @@ import time
 
 from setup.models import BlockchainScan, MemPoolScan
 from peermarket.models import Transaction
+from helpers import json_custom_parser
 
 def get_blockchain_scan_status(rpc_raw):
     blockcount = rpc_raw.getblockcount()
@@ -104,7 +105,7 @@ def parse_transaction(rpc_raw, tx_id, block_index):
                     new_blog.save()
 
 
-def submit_opreturn(rpc_connection, address, data):
+def submit_opreturn(rpc_raw, rpc_connection, address, data):
     from bitcoin.core import CTxIn, CMutableTxOut, CScript, CMutableTransaction, COIN, CENT, b2x, b2lx
     from bitcoin.core.script import OP_CHECKSIG, OP_RETURN
 
@@ -117,12 +118,15 @@ def submit_opreturn(rpc_connection, address, data):
     value_in = unspent[-1]['amount']
 
     change_pubkey = rpc_connection.validateaddress(address)['pubkey']
-    change_out = CMutableTxOut(int(value_in - 2*CENT), CScript([change_pubkey, OP_CHECKSIG]))
-    digest_outs = [CMutableTxOut(CENT, CScript([OP_RETURN, data]))]
+    change_out = CMutableTxOut(int(value_in - 1*CENT), CScript([change_pubkey, OP_CHECKSIG]))
+    digest_outs = [CMutableTxOut(0, CScript([OP_RETURN, data]))]
     txouts = [change_out] + digest_outs
     tx = CMutableTransaction(txins, txouts)
     
-    print tx.serialize().encode('hex')
+    tx_hex = tx.serialize().encode('hex')
+    print "decoderawtransaction", tx_hex
+    import json
+    print json.dumps(rpc_raw.decoderawtransaction(tx_hex), indent=4, default=json_custom_parser)
     r = rpc_connection.signrawtransaction(tx)
     assert r['complete']
     tx = r['tx']
