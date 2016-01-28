@@ -125,7 +125,6 @@ def submit_opreturn(rpc_raw, rpc_connection, address, data):
     
     tx_hex = tx.serialize().encode('hex')
     print "decoderawtransaction", tx_hex
-    import json
     print json.dumps(rpc_raw.decoderawtransaction(tx_hex), indent=4, default=json_custom_parser)
     r = rpc_connection.signrawtransaction(tx)
     assert r['complete']
@@ -134,4 +133,5 @@ def submit_opreturn(rpc_raw, rpc_connection, address, data):
 
     #print b2x(tx.serialize())
     #print len(tx.serialize()), 'bytes'
-    print(b2lx(rpc_connection.sendrawtransaction(tx)))
+    sent_tx_id = rpc_connection.sendrawtransaction(tx)
+    print "sent_tx_id", b2lx(sent_tx_id)
