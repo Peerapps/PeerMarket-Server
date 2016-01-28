@@ -12,45 +12,65 @@ import helpers, blockchain_func
 #from django.test import TestCase
 import json
 
-from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
-message = json.dumps([
-    {
-        'action': 'new_listing',
-        'peercoin_address': from_address,
-        'category': 'Neopets',
-        'subcategory': 'Neopoints',
-        'quantity': '1000000',
-        'requested_peercoin': '10',
-        'message': "The exchange will be made like so: You create a Neopets trade, I'll bid the currency on it, you accept. Contact me via Signal @ 212 867 5309"
-    }
-])
-rpc_raw = rpcRawProxy(helpers.get_rpc_url())
+def create_listing():
+    from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+    payload = json.dumps([
+        {
+            'action': 'new_listing',
+            'peercoin_address': from_address,
+            'category': 'Neopets',
+            'subcategory': 'Neopoints',
+            'quantity': '1000000',
+            'requested_peercoin': '10',
+            'message': "The exchange will be made like so: You create a Neopets trade, I'll bid the currency on it, you accept. Contact me via Signal @ 212 867 5309"
+        }
+    ])
+    submit_api_call(from_address, payload)
 
-#rpc_raw.walletpassphrase(request.POST['wallet_passphrase'], 60)
+def create_offer():
+    from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+    payload = json.dumps([
+        {
+            'action': 'new_offer',
+            'listing_tx_id': '',
+            'quantity': '1000000',
+            'offered_peercoin': '10',
+            'peercoin_address': from_address,
+            'message': "I'm interested, let's do it. If chosen, I'll contact you on signal."
+        }
+    ])
+    submit_api_call(from_address, payload)
 
-try:
-    message += "|" + helpers.sign_string(rpc_raw, message, from_address)
-except JSONRPCException, e:
-    if "passphrase" in e.error['message']:
-        raise PeercoinError("Wallet locked.")
-    else:
-        raise PeercoinError("Error while trying to sign with peercoin public key.")
+def submit_api_call(from_address, payload):
+    rpc_raw = rpcRawProxy(helpers.get_rpc_url())
 
-print "Message plus signature:", message
+    #rpc_raw.walletpassphrase(request.POST['wallet_passphrase'], 60)
 
-#create a json structure to be posted externally
-final_output = helpers.format_outgoing(message)
+    try:
+        payload += "|" + helpers.sign_string(rpc_raw, payload, from_address)
+    except JSONRPCException, e:
+        if "passphrase" in e.error['message']:
+            raise PeercoinError("Wallet locked.")
+        else:
+            raise PeercoinError("Error while trying to sign with peercoin public key.")
 
-print "final_output", final_output
+    print "Payload plus signature:", payload
 
-opreturn_key = external_db.post_data(final_output)
+    formatted_payload = helpers.format_outgoing(payload)
 
-op_return_data = "pm" #program code (peermessage), 2 chars
-op_return_data += opreturn_key #key pointing to external datastore
+    print "formatted_payload", formatted_payload
 
-print "op_return_data", op_return_data
+    opreturn_key = external_db.post_data(formatted_payload)
 
-rpc_processed = rpcProcessedProxy()
-blockchain_func.submit_opreturn(rpc_raw, rpc_processed, from_address, op_return_data)
+    op_return_data = "pm" #program code (peermarket), 2 chars
+    op_return_data += opreturn_key #key pointing to external datastore
 
-print "success"
+    print "op_return_data", op_return_data
+
+    rpc_processed = rpcProcessedProxy()
+    blockchain_func.submit_opreturn(rpc_raw, rpc_processed, from_address, op_return_data)
+
+    print "success"
+
+create_listing()
+create_offer()
