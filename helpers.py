@@ -30,7 +30,6 @@ def download_payload(rpc_raw, key, from_address):
 
     return verified_message
 
-
 def download_payloads(rpc_raw):
     from peermarket.models import Listing, Offer, Message, Transaction
     transactions_waiting = Transaction.objects.filter(payload_retrieved=False).order_by('-time_created')
@@ -157,34 +156,6 @@ def get_rpc_url():
          conf['rpcport']))
     return service_url
 
-def get_pk(address):
-    if not os.path.isdir(peerapps.settings.BASE_DIR+"/my_keys/gpg_"+address):
-        raise ValueError
-    gpg = gnupg.GPG(gnupghome=peerapps.settings.BASE_DIR+"/my_keys/gpg_"+address)
-    return gpg.export_keys(gpg.list_keys()[0]['keyid'])
-
-def check_gpg_status(address):
-    return os.path.isdir(peerapps.settings.BASE_DIR+"/my_keys/gpg_"+address)
-
-def save_public_key(address, key):
-    pk_dir = peerapps.settings.BASE_DIR+"/public_keys/gpg_"+address+'/'
-    shutil.rmtree(pk_dir, ignore_errors=True)
-    os.makedirs(pk_dir)
-    with open(pk_dir+'keys.asc', 'w') as f:
-        f.write(key)
-
-def setup_gpg(address):
-    if not os.path.exists(peerapps.settings.BASE_DIR+"/my_keys/gpg_"+address):
-        os.mkdir(peerapps.settings.BASE_DIR+"/my_keys/gpg_"+address)
-    gpg = gnupg.GPG(gnupghome=peerapps.settings.BASE_DIR+"/my_keys/gpg_"+address)
-    input_data = gpg.gen_key_input(name_email=address+'@peercoin.net')
-    key = gpg.gen_key(input_data)
-    ascii_armored_public_keys = gpg.export_keys(str(key))
-    ascii_armored_private_keys = gpg.export_keys(str(key), True)
-    with open(peerapps.settings.BASE_DIR+"/my_keys/gpg_"+address+'/keys.asc', 'w') as f:
-        f.write(ascii_armored_public_keys)
-        f.write(ascii_armored_private_keys)
-
 def format_outgoing(plaintext):
     return urllib.quote_plus(plaintext.encode("base64"))
 
@@ -203,20 +174,6 @@ def verify_and_strip_signature(rpc_connection, plaintext, address):
     message = "|".join(base)
     assert rpc_connection.verifymessage(address, signature, message) == True
     return message
-
-def encrypt_string(plaintext, address):
-    gpg = gnupg.GPG(gnupghome=peerapps.settings.BASE_DIR+"/public_keys/gpg_"+address)
-    key_data = open(peerapps.settings.BASE_DIR+"/public_keys/gpg_"+address+'/keys.asc').read()
-    gpg.import_keys(key_data)
-    encrypted_data = gpg.encrypt(plaintext, address+'@peercoin.net', always_trust=True)
-    if not str(encrypted_data):
-        print encrypted_data.stderr
-    return str(encrypted_data)
-
-def decrypt_string(encrypted_string, address):
-    gpg = gnupg.GPG(gnupghome=peerapps.settings.BASE_DIR+"/my_keys/gpg_"+address)
-    decrypted_data = gpg.decrypt(encrypted_string, always_trust=True)
-    return str(decrypted_data.data)
 
 def json_custom_parser(obj):
     """
