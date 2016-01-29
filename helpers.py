@@ -51,6 +51,46 @@ def process_payload(transaction, payload_str):
                 new_message = Message(**message_details)
                 new_message.save()
 
+        elif db_query['action'] == 'update_listing':
+
+            existing_listing = Listing.objects.get(tx_id=db_query['listing_tx_id'])
+            summary_of_changes = ""
+            
+            if 'quantity' in db_query:
+                summary_of_changes += "Updated quantity from " + str(existing_listing.quantity) + " to " + str(db_query['quantity']) + ".\n"
+                existing_listing.quantity = db_query['quantity']
+            if 'category' in db_query:
+                summary_of_changes += "Updated category from " + str(existing_listing.category) + " to " + str(db_query['category']) + ".\n"
+                existing_listing.category = db_query['category']
+            if 'subcategory' in db_query:
+                summary_of_changes += "Updated subcategory from " + str(existing_listing.category) + " to " + str(db_query['subcategory']) + ".\n"
+                existing_listing.subcategory = db_query['subcategory']
+            if 'requested_peercoin' in db_query:
+                summary_of_changes += "Updated requested_peercoin from " + str(existing_listing.requested_peercoin) + " to " + str(db_query['requested_peercoin']) + ".\n"
+                existing_listing.requested_peercoin = db_query['requested_peercoin']
+
+            existing_listing.save()
+
+            message = ""
+            if db_query.get('message', ''):
+                message = db_query['message']
+                if summary_of_changes:
+                    message = message + "\n\n----------\n\n" + summary_of_changes
+            else:
+                message = summary_of_changes
+
+            if message:
+                message_details = {
+                    "tx_id": transaction.tx_id,
+                    "listing_tx_id": transaction.tx_id,
+                    "peercoin_address": transaction.peercoin_address,
+                    "block_number_created": transaction.block_number_created,
+                    "time_created": transaction.time_created,
+                    "message": message
+                }
+                new_message = Message(**message_details)
+                new_message.save()
+
         elif db_query['action'] == 'new_offer':
             offer_details = {
                 "tx_id": transaction.tx_id,

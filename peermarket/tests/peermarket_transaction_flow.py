@@ -17,7 +17,6 @@ def create_listing():
     payload = json.dumps([
         {
             'action': 'new_listing',
-            'peercoin_address': from_address,
             'category': 'Neopets',
             'subcategory': 'Neopoints',
             'quantity': '1000000',
@@ -27,15 +26,29 @@ def create_listing():
     ])
     submit_api_call(from_address, payload)
 
+def update_listing():
+    from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+    payload = json.dumps([
+        {
+            'action': 'update_listing',
+            'category': 'Neopets2',
+            'subcategory': 'Neopoints2',
+            'listing_tx_id': 'MISSING',
+            'quantity': '2222',
+            'requested_peercoin': '22',
+            'message': "I'm a second message on a listing!"
+        }
+    ])
+    submit_api_call(from_address, payload)
+
 def create_offer():
     from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
     payload = json.dumps([
         {
             'action': 'new_offer',
-            'listing_tx_id': '',
+            'listing_tx_id': 'MISSING',
             'quantity': '1000000',
             'offered_peercoin': '10',
-            'peercoin_address': from_address,
             'message': "I'm interested, let's do it. If chosen, I'll contact you on signal."
         }
     ])
