@@ -54,6 +54,19 @@ def create_offer():
     ])
     submit_api_call(from_address, payload)
 
+def update_offer():
+    from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+    payload = json.dumps([
+        {
+            'action': 'update_offer',
+            'listing_tx_id': 'MISSING',
+            'quantity': '1000000',
+            'offered_peercoin': '11',
+            'message': "I upped my offer because I really want your thing."
+        }
+    ])
+    submit_api_call(from_address, payload)
+
 def submit_api_call(from_address, payload):
     rpc_raw = rpcRawProxy(helpers.get_rpc_url())
 
