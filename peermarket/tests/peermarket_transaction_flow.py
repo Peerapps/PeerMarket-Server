@@ -49,13 +49,13 @@ def create_offer(from_address, listing_tx_id):
             'message': "I'm interested, let's do it. If chosen, I'll contact you on signal."
         }
     ])
-    submit_api_call(from_address, payload)
+    return submit_api_call(from_address, payload)
 
-def update_offer(from_address, listing_tx_id):
+def update_offer(from_address, offer_tx_id):
     payload = json.dumps([
         {
             'action': 'update_offer',
-            'listing_tx_id': listing_tx_id,
+            'offer_tx_id': offer_tx_id,
             'quantity': '1000000',
             'offered_peercoin': '11',
             'message': "I upped my offer because I really want your thing."
@@ -63,12 +63,21 @@ def update_offer(from_address, listing_tx_id):
     ])
     submit_api_call(from_address, payload)
 
-def cancel_offer(from_address, listing_tx_id):
-    #TODO incomplete.
+def cancel_offer(from_address, offer_tx_id):
     payload = json.dumps([
         {
             'action': 'cancel_offer',
-            'listing_tx_id': listing_tx_id
+            'offer_tx_id': offer_tx_id
+        }
+    ])
+    submit_api_call(from_address, payload)
+
+def reject_offer(from_address, offer_tx_id):
+    payload = json.dumps([
+        {
+            'action': 'reject_offer',
+            'offer_tx_id': offer_tx_id,
+            'message': "Raise it to 20 peercoins and you've got a deal."
         }
     ])
     submit_api_call(from_address, payload)
@@ -108,6 +117,6 @@ def submit_api_call(from_address, payload):
 from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
 listing_tx_id = create_listing(from_address)
 update_listing(from_address, listing_tx_id)
-create_offer(from_address, listing_tx_id)
-update_offer(from_address, listing_tx_id)
-cancel_offer(from_address, listing_tx_id)
+offer_tx_id = create_offer(from_address, listing_tx_id)
+update_offer(from_address, offer_tx_id)
+cancel_offer(from_address, offer_tx_id)
