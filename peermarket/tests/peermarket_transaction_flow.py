@@ -124,9 +124,17 @@ def submit_api_call(from_address, payload):
     print "success"
     return tx_id
 
-from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
-listing_tx_id = create_listing(from_address)
-update_listing(from_address, listing_tx_id)
-offer_tx_id = create_offer(from_address, listing_tx_id)
-update_offer(from_address, offer_tx_id)
-cancel_offer(from_address, offer_tx_id)
+seller_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+buyer_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+
+listing_tx_id = create_listing(seller_address)
+update_listing(seller_address, listing_tx_id)
+
+offer_tx_id = create_offer(buyer_address, listing_tx_id)
+update_offer(buyer_address, offer_tx_id)
+offer_tx_id = create_offer(buyer_address, listing_tx_id)
+cancel_offer(buyer_address, offer_tx_id)
+offer_tx_id = create_offer(buyer_address, listing_tx_id)
+reject_offer(seller_address, offer_tx_id)
+offer_tx_id = create_offer(buyer_address, listing_tx_id)
+accept_offer(seller_address, offer_tx_id)
