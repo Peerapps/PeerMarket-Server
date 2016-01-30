@@ -95,7 +95,7 @@ def parse_transaction(rpc_raw, tx_id, block_index):
                 if not Transaction.objects.filter(pm_key=op_return_data[2:]).exists():
                     print "Found transaction"
 
-                    new_blog = Transaction(**{
+                    new_trans = Transaction(**{
                         "tx_id": tx_id,
                         "peercoin_address": from_user_address,
                         "block_number_created": block_index,
@@ -103,7 +103,7 @@ def parse_transaction(rpc_raw, tx_id, block_index):
                         "pm_key": op_return_data[2:],
                         "pm_payload": ""
                     })
-                    new_blog.save()
+                    new_trans.save()
 
 
 def submit_opreturn(rpc_raw, rpc_connection, address, data):
@@ -126,7 +126,8 @@ def submit_opreturn(rpc_raw, rpc_connection, address, data):
     
     tx_hex = tx.serialize().encode('hex')
     print "decoderawtransaction", tx_hex
-    print json.dumps(rpc_raw.decoderawtransaction(tx_hex), indent=4, default=json_custom_parser)
+    transaction_decoded = rpc_raw.decoderawtransaction(tx_hex)
+    print json.dumps(transaction_decoded, indent=4, default=json_custom_parser)
     r = rpc_connection.signrawtransaction(tx)
     assert r['complete']
     tx = r['tx']
@@ -134,6 +135,5 @@ def submit_opreturn(rpc_raw, rpc_connection, address, data):
 
     #print b2x(tx.serialize())
     #print len(tx.serialize()), 'bytes'
-    sent_tx_id = b2lx(rpc_connection.sendrawtransaction(tx))
-    print "sent_tx_id", sent_tx_id
-    return sent_tx_id
+    sent_tx_id = rpc_connection.sendrawtransaction(tx)
+    return b2lx(sent_tx_id)

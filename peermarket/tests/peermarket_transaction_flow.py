@@ -12,7 +12,7 @@ import helpers, blockchain_func
 #from django.test import TestCase
 import json
 
-def create_listing(from_address):
+def new_listing(from_address):
     payload = json.dumps([
         {
             'action': 'new_listing',
@@ -39,7 +39,7 @@ def update_listing(from_address, listing_tx_id):
     ])
     submit_api_call(from_address, payload)
 
-def create_offer(from_address, listing_tx_id):
+def new_offer(from_address, listing_tx_id):
     payload = json.dumps([
         {
             'action': 'new_offer',
@@ -128,17 +128,17 @@ seller_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
 buyer_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
 
 try:
-    listing_tx_id = create_listing(seller_address)
+    listing_tx_id = new_listing(seller_address)
     update_listing(seller_address, listing_tx_id)
 
-    offer_tx_id = create_offer(buyer_address, listing_tx_id)
+    offer_tx_id = new_offer(buyer_address, listing_tx_id)
     update_offer(buyer_address, offer_tx_id)
-    offer_tx_id = create_offer(buyer_address, listing_tx_id)
-    cancel_offer(buyer_address, offer_tx_id)
-    offer_tx_id = create_offer(buyer_address, listing_tx_id)
-    reject_offer(seller_address, offer_tx_id)
-    offer_tx_id = create_offer(buyer_address, listing_tx_id)
-    accept_offer(seller_address, offer_tx_id)
+    #offer_tx_id = new_offer(buyer_address, listing_tx_id)
+    #cancel_offer(buyer_address, offer_tx_id)
+    #offer_tx_id = new_offer(buyer_address, listing_tx_id)
+    #reject_offer(seller_address, offer_tx_id)
+    #offer_tx_id = new_offer(buyer_address, listing_tx_id)
+    #accept_offer(seller_address, offer_tx_id)
 except Exception as e:
     if 'Connection refused' in str(e):
         raise PeercoinError('Unable to detect Peercoin wallet - are you sure the wallet is running?')

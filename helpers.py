@@ -262,10 +262,39 @@ def download_payloads(rpc_raw):
         print "***Pulled new payload:", payload_str
         transaction.pm_payload = payload_str
         transaction.payload_retrieved = True
-        transaction.save()
 
         try:
-            process_payload(transaction, payload_str)
+            #If possible, extract action type to get a sense of order/priority.
+            transaction.payload_action = json.loads(payload_str)['action']
+        except:
+            pass
+
+        transaction.save()
+
+    #process new listings first
+    for transaction in Transaction.objects.filter(payload_executed=False,payload_action='new_listing').order_by('-time_created'):
+        try:
+            process_payload(transaction, transaction.pm_payload)
+        except BadPeermarketTransaction as e:
+            print e.message
+
+        transaction.payload_executed = True
+        transaction.save()
+
+    #process new offers second
+    for transaction in Transaction.objects.filter(payload_executed=False,payload_action='new_offer').order_by('-time_created'):
+        try:
+            process_payload(transaction, transaction.pm_payload)
+        except BadPeermarketTransaction as e:
+            print e.message
+
+        transaction.payload_executed = True
+        transaction.save()
+
+    #process everything else
+    for transaction in Transaction.objects.filter(payload_executed=False).order_by('-time_created'):
+        try:
+            process_payload(transaction, transaction.pm_payload)
         except BadPeermarketTransaction as e:
             print e.message
 
