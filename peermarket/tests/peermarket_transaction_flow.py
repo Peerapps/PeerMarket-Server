@@ -82,6 +82,16 @@ def reject_offer(from_address, offer_tx_id):
     ])
     submit_api_call(from_address, payload)
 
+def accept_offer(from_address, offer_tx_id):
+    payload = json.dumps([
+        {
+            'action': 'accept_offer',
+            'offer_tx_id': offer_tx_id,
+            'message': "Raise it to 20 peercoins and you've got a deal."
+        }
+    ])
+    submit_api_call(from_address, payload)
+
 def submit_api_call(from_address, payload):
     rpc_raw = rpcRawProxy(helpers.get_rpc_url())
 

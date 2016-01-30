@@ -118,7 +118,7 @@ def process_payload(transaction, payload_str):
 
         elif db_query['action'] == 'update_offer':
 
-            existing_offer = Offer.objects.get(tx_id=db_query['offer_tx_id'])
+            existing_offer = Offer.objects.get(offer_tx_id=db_query['offer_tx_id'], peercoin_address=transaction.peercoin_address)
             summary_of_changes = ""
 
             if 'quantity' in db_query:
@@ -152,7 +152,7 @@ def process_payload(transaction, payload_str):
 
         elif db_query['action'] == 'cancel_offer':
 
-            existing_offer = Offer.objects.get(offer_tx_id=db_query['offer_tx_id'])
+            existing_offer = Offer.objects.get(offer_tx_id=db_query['offer_tx_id'], peercoin_address=transaction.peercoin_address)
             existing_offer.offer_status = 2 #Canceled by offerer
             existing_offer.tx_id_status_change = transaction.tx_id
             existing_offer.block_number_status_change = transaction.block_number_created
@@ -162,7 +162,36 @@ def process_payload(transaction, payload_str):
         elif db_query['action'] == 'reject_offer':
 
             existing_offer = Offer.objects.get(offer_tx_id=db_query['offer_tx_id'])
+
+            #Only allow poster of listing to do this action
+            existing_listing = Listing.objects.get(tx_id=existing_offer.listing_tx_id, peercoin_address=transaction.peercoin_address)
+            
             existing_offer.offer_status = 3 #Rejected by lister
+            existing_offer.tx_id_status_change = transaction.tx_id
+            existing_offer.block_number_status_change = transaction.block_number_created
+            existing_offer.time_status_change = transaction.time_created
+            existing_offer.save()
+
+            if db_query.get('message', False):
+                message_details = {
+                    "tx_id": transaction.tx_id,
+                    "offer_tx_id": transaction.tx_id,
+                    "peercoin_address": transaction.peercoin_address,
+                    "block_number_created": transaction.block_number_created,
+                    "time_created": transaction.time_created,
+                    "message": db_query['message']
+                }
+                new_message = Message(**message_details)
+                new_message.save()
+
+        elif db_query['action'] == 'accept_offer':
+
+            existing_offer = Offer.objects.get(offer_tx_id=db_query['offer_tx_id'])
+
+            #Only allow poster of listing to do this action
+            existing_listing = Listing.objects.get(tx_id=existing_offer.listing_tx_id, peercoin_address=transaction.peercoin_address)
+
+            existing_offer.offer_status = 4 #Accepted by lister
             existing_offer.tx_id_status_change = transaction.tx_id
             existing_offer.block_number_status_change = transaction.block_number_created
             existing_offer.time_status_change = transaction.time_created
