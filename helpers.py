@@ -14,226 +14,219 @@ from peermarket.errors import BadPeermarketTransaction
 
 import shutil
 
-def process_payload(transaction, payload_str):
-    try:
-        payload = json.loads(payload_str)
-    except:
-        raise BadPeermarketTransaction('Unable to process json string from payload: '+str(payload_str))
+def process_pm_query(transaction, pm_query):
+    if 'action' not in pm_query:
+        raise BadPeermarketTransaction('Unable to detect action requested in: '+str(pm_query))
 
-    for db_query in payload:
+    if pm_query['action'] == 'new_listing':
+        listing_details = {
+            "tx_id": transaction.tx_id,
+            "category": pm_query['category'],
+            "subcategory": pm_query['subcategory'],
+            "quantity": pm_query['quantity'],
+            "requested_peercoin": pm_query['requested_peercoin'],
+            "peercoin_address": transaction.peercoin_address,
+            "block_number_created": transaction.block_number_created,
+            "time_created": transaction.time_created
+        }
+        new_listing = Listing(**listing_details)
+        new_listing.save()
 
-        if 'action' not in db_query:
-            raise BadPeermarketTransaction('Unable to detect action requested in: '+str(db_query))
-
-        if db_query['action'] == 'new_listing':
-            listing_details = {
+        if pm_query.get('message', ''):
+            message_details = {
                 "tx_id": transaction.tx_id,
-                "category": db_query['category'],
-                "subcategory": db_query['subcategory'],
-                "quantity": db_query['quantity'],
-                "requested_peercoin": db_query['requested_peercoin'],
+                "listing_tx_id": transaction.tx_id,
                 "peercoin_address": transaction.peercoin_address,
                 "block_number_created": transaction.block_number_created,
-                "time_created": transaction.time_created
+                "time_created": transaction.time_created,
+                "message": pm_query['message']
             }
-            new_listing = Listing(**listing_details)
-            new_listing.save()
+            new_message = Message(**message_details)
+            new_message.save()
 
-            if db_query.get('message', ''):
-                message_details = {
-                    "tx_id": transaction.tx_id,
-                    "listing_tx_id": transaction.tx_id,
-                    "peercoin_address": transaction.peercoin_address,
-                    "block_number_created": transaction.block_number_created,
-                    "time_created": transaction.time_created,
-                    "message": db_query['message']
-                }
-                new_message = Message(**message_details)
-                new_message.save()
+    elif pm_query['action'] == 'update_listing':
 
-        elif db_query['action'] == 'update_listing':
+        try:
+            existing_listing = Listing.objects.get(tx_id=pm_query['listing_tx_id'], peercoin_address=transaction.peercoin_address)
+        except Listing.DoesNotExist:
+            raise BadPeermarketTransaction('Update Listing Error: No listing found with tx_id='+str(pm_query['listing_tx_id'])+" and peercoin_address="+str(transaction.peercoin_address))
+        summary_of_changes = ""
 
-            try:
-                existing_listing = Listing.objects.get(tx_id=db_query['listing_tx_id'], peercoin_address=transaction.peercoin_address)
-            except Listing.DoesNotExist:
-                raise BadPeermarketTransaction('Update Listing Error: No listing found with tx_id='+str(db_query['listing_tx_id'])+" and peercoin_address="+str(transaction.peercoin_address))
-            summary_of_changes = ""
-            
-            if 'quantity' in db_query:
-                summary_of_changes += "Updated quantity from " + str(existing_listing.quantity) + " to " + str(db_query['quantity']) + ".\n"
-                existing_listing.quantity = db_query['quantity']
-            if 'category' in db_query:
-                summary_of_changes += "Updated category from " + str(existing_listing.category) + " to " + str(db_query['category']) + ".\n"
-                existing_listing.category = db_query['category']
-            if 'subcategory' in db_query:
-                summary_of_changes += "Updated subcategory from " + str(existing_listing.category) + " to " + str(db_query['subcategory']) + ".\n"
-                existing_listing.subcategory = db_query['subcategory']
-            if 'requested_peercoin' in db_query:
-                summary_of_changes += "Updated requested_peercoin from " + str(existing_listing.requested_peercoin) + " to " + str(db_query['requested_peercoin']) + ".\n"
-                existing_listing.requested_peercoin = db_query['requested_peercoin']
+        if 'quantity' in pm_query:
+            summary_of_changes += "Updated quantity from " + str(existing_listing.quantity) + " to " + str(pm_query['quantity']) + ".\n"
+            existing_listing.quantity = pm_query['quantity']
+        if 'category' in pm_query:
+            summary_of_changes += "Updated category from " + str(existing_listing.category) + " to " + str(pm_query['category']) + ".\n"
+            existing_listing.category = pm_query['category']
+        if 'subcategory' in pm_query:
+            summary_of_changes += "Updated subcategory from " + str(existing_listing.category) + " to " + str(pm_query['subcategory']) + ".\n"
+            existing_listing.subcategory = pm_query['subcategory']
+        if 'requested_peercoin' in pm_query:
+            summary_of_changes += "Updated requested_peercoin from " + str(existing_listing.requested_peercoin) + " to " + str(pm_query['requested_peercoin']) + ".\n"
+            existing_listing.requested_peercoin = pm_query['requested_peercoin']
 
-            existing_listing.save()
+        existing_listing.save()
 
-            message = ""
-            if db_query.get('message', ''):
-                message = db_query['message']
-                if summary_of_changes:
-                    message = message + "\n\n----------\n\n" + summary_of_changes
-            else:
-                message = summary_of_changes
-
-            if message:
-                message_details = {
-                    "tx_id": transaction.tx_id,
-                    "listing_tx_id": transaction.tx_id,
-                    "peercoin_address": transaction.peercoin_address,
-                    "block_number_created": transaction.block_number_created,
-                    "time_created": transaction.time_created,
-                    "message": message
-                }
-                new_message = Message(**message_details)
-                new_message.save()
-
-        elif db_query['action'] == 'new_offer':
-            offer_details = {
-                "tx_id": transaction.tx_id,
-                "listing_tx_id": db_query['listing_tx_id'],
-                "quantity": db_query['quantity'],
-                "offered_peercoin": db_query['offered_peercoin'],
-                "peercoin_address": transaction.peercoin_address,
-                "block_number_created": transaction.block_number_created,
-                "time_created": transaction.time_created
-            }
-            offer_details = Offer(**offer_details)
-            offer_details.save()
-
-            if db_query.get('message', ''):
-                message_details = {
-                    "tx_id": transaction.tx_id,
-                    "offer_tx_id": transaction.tx_id,
-                    "peercoin_address": transaction.peercoin_address,
-                    "block_number_created": transaction.block_number_created,
-                    "time_created": transaction.time_created,
-                    "message": db_query['message']
-                }
-                new_message = Message(**message_details)
-                new_message.save()
-
-        elif db_query['action'] == 'update_offer':
-
-            try:
-                existing_offer = Offer.objects.get(tx_id=db_query['offer_tx_id'], peercoin_address=transaction.peercoin_address)
-            except Offer.DoesNotExist:
-                raise BadPeermarketTransaction('Update Offer Error: No offer found with tx_id='+str(db_query['offer_tx_id'])+" and peercoin_address="+str(transaction.peercoin_address))
-
-            summary_of_changes = ""
-
-            if 'quantity' in db_query:
-                summary_of_changes += "Updated quantity from " + str(existing_offer.quantity) + " to " + str(db_query['quantity']) + ".\n"
-                existing_offer.quantity = db_query['quantity']
-            if 'offered_peercoin' in db_query:
-                summary_of_changes += "Updated offered_peercoin from " + str(existing_offer.offered_peercoin) + " to " + str(db_query['offered_peercoin']) + ".\n"
-                existing_offer.offered_peercoin = db_query['offered_peercoin']
-
-            existing_offer.save()
-
-            message = ""
-            if db_query.get('message', ''):
-                message = db_query['message']
-                if summary_of_changes:
-                    message = message + "\n\n----------\n\n" + summary_of_changes
-            else:
-                message = summary_of_changes
-
-            if message:
-                message_details = {
-                    "tx_id": transaction.tx_id,
-                    "offer_tx_id": transaction.tx_id,
-                    "peercoin_address": transaction.peercoin_address,
-                    "block_number_created": transaction.block_number_created,
-                    "time_created": transaction.time_created,
-                    "message": message
-                }
-                new_message = Message(**message_details)
-                new_message.save()
-
-        elif db_query['action'] == 'cancel_offer':
-
-            try:
-                existing_offer = Offer.objects.get(tx_id=db_query['offer_tx_id'], peercoin_address=transaction.peercoin_address)
-            except Offer.DoesNotExist:
-                raise BadPeermarketTransaction('Cancel Offer Error: No offer found with tx_id='+str(db_query['offer_tx_id'])+" and peercoin_address="+str(transaction.peercoin_address))
-
-            existing_offer.offer_status = 2 #Canceled by offerer
-            existing_offer.tx_id_status_change = transaction.tx_id
-            existing_offer.block_number_status_change = transaction.block_number_created
-            existing_offer.time_status_change = transaction.time_created
-            existing_offer.save()
-
-        elif db_query['action'] == 'reject_offer':
-
-            try:
-                existing_offer = Offer.objects.get(tx_id=db_query['offer_tx_id'])
-            except Offer.DoesNotExist:
-                raise BadPeermarketTransaction('Reject Offer Error: No offer found with tx_id='+str(db_query['offer_tx_id']))
-
-            #Only allow poster of listing to do this action
-            try:
-                existing_listing = Listing.objects.get(tx_id=existing_offer.listing_tx_id, peercoin_address=transaction.peercoin_address)
-            except Offer.DoesNotExist:
-                raise BadPeermarketTransaction('Reject Offer Error: No listing found with tx_id='+str(existing_offer.listing_tx_id)+" and peercoin_address="+str(transaction.peercoin_address))
-            
-            existing_offer.offer_status = 3 #Rejected by lister
-            existing_offer.tx_id_status_change = transaction.tx_id
-            existing_offer.block_number_status_change = transaction.block_number_created
-            existing_offer.time_status_change = transaction.time_created
-            existing_offer.save()
-
-            if db_query.get('message', False):
-                message_details = {
-                    "tx_id": transaction.tx_id,
-                    "offer_tx_id": transaction.tx_id,
-                    "peercoin_address": transaction.peercoin_address,
-                    "block_number_created": transaction.block_number_created,
-                    "time_created": transaction.time_created,
-                    "message": db_query['message']
-                }
-                new_message = Message(**message_details)
-                new_message.save()
-
-        elif db_query['action'] == 'accept_offer':
-
-            try:
-                existing_offer = Offer.objects.get(tx_id=db_query['offer_tx_id'])
-            except Offer.DoesNotExist:
-                raise BadPeermarketTransaction('Reject Offer Error: No offer found with tx_id='+str(db_query['offer_tx_id']))
-
-            #Only allow poster of listing to do this action
-            try:
-                existing_listing = Listing.objects.get(tx_id=existing_offer.listing_tx_id, peercoin_address=transaction.peercoin_address)
-            except Offer.DoesNotExist:
-                raise BadPeermarketTransaction('Reject Offer Error: No listing found with tx_id='+str(existing_offer.listing_tx_id)+" and peercoin_address="+str(transaction.peercoin_address))
-
-            existing_offer.offer_status = 4 #Accepted by lister
-            existing_offer.tx_id_status_change = transaction.tx_id
-            existing_offer.block_number_status_change = transaction.block_number_created
-            existing_offer.time_status_change = transaction.time_created
-            existing_offer.save()
-
-            if db_query.get('message', False):
-                message_details = {
-                    "tx_id": transaction.tx_id,
-                    "offer_tx_id": transaction.tx_id,
-                    "peercoin_address": transaction.peercoin_address,
-                    "block_number_created": transaction.block_number_created,
-                    "time_created": transaction.time_created,
-                    "message": db_query['message']
-                }
-                new_message = Message(**message_details)
-                new_message.save()
-
+        message = ""
+        if pm_query.get('message', ''):
+            message = pm_query['message']
+            if summary_of_changes:
+                message = message + "\n\n----------\n\n" + summary_of_changes
         else:
-            raise BadPeermarketTransaction('Unable to parse db_query requested in: '+str(db_query))
+            message = summary_of_changes
+
+        if message:
+            message_details = {
+                "tx_id": transaction.tx_id,
+                "listing_tx_id": transaction.tx_id,
+                "peercoin_address": transaction.peercoin_address,
+                "block_number_created": transaction.block_number_created,
+                "time_created": transaction.time_created,
+                "message": message
+            }
+            new_message = Message(**message_details)
+            new_message.save()
+
+    elif pm_query['action'] == 'new_offer':
+        offer_details = {
+            "tx_id": transaction.tx_id,
+            "listing_tx_id": pm_query['listing_tx_id'],
+            "quantity": pm_query['quantity'],
+            "offered_peercoin": pm_query['offered_peercoin'],
+            "peercoin_address": transaction.peercoin_address,
+            "block_number_created": transaction.block_number_created,
+            "time_created": transaction.time_created
+        }
+        offer_details = Offer(**offer_details)
+        offer_details.save()
+
+        if pm_query.get('message', ''):
+            message_details = {
+                "tx_id": transaction.tx_id,
+                "offer_tx_id": transaction.tx_id,
+                "peercoin_address": transaction.peercoin_address,
+                "block_number_created": transaction.block_number_created,
+                "time_created": transaction.time_created,
+                "message": pm_query['message']
+            }
+            new_message = Message(**message_details)
+            new_message.save()
+
+    elif pm_query['action'] == 'update_offer':
+
+        try:
+            existing_offer = Offer.objects.get(tx_id=pm_query['offer_tx_id'], peercoin_address=transaction.peercoin_address)
+        except Offer.DoesNotExist:
+            raise BadPeermarketTransaction('Update Offer Error: No offer found with tx_id='+str(pm_query['offer_tx_id'])+" and peercoin_address="+str(transaction.peercoin_address))
+
+        summary_of_changes = ""
+
+        if 'quantity' in pm_query:
+            summary_of_changes += "Updated quantity from " + str(existing_offer.quantity) + " to " + str(pm_query['quantity']) + ".\n"
+            existing_offer.quantity = pm_query['quantity']
+        if 'offered_peercoin' in pm_query:
+            summary_of_changes += "Updated offered_peercoin from " + str(existing_offer.offered_peercoin) + " to " + str(pm_query['offered_peercoin']) + ".\n"
+            existing_offer.offered_peercoin = pm_query['offered_peercoin']
+
+        existing_offer.save()
+
+        message = ""
+        if pm_query.get('message', ''):
+            message = pm_query['message']
+            if summary_of_changes:
+                message = message + "\n\n----------\n\n" + summary_of_changes
+        else:
+            message = summary_of_changes
+
+        if message:
+            message_details = {
+                "tx_id": transaction.tx_id,
+                "offer_tx_id": transaction.tx_id,
+                "peercoin_address": transaction.peercoin_address,
+                "block_number_created": transaction.block_number_created,
+                "time_created": transaction.time_created,
+                "message": message
+            }
+            new_message = Message(**message_details)
+            new_message.save()
+
+    elif pm_query['action'] == 'cancel_offer':
+
+        try:
+            existing_offer = Offer.objects.get(tx_id=pm_query['offer_tx_id'], peercoin_address=transaction.peercoin_address)
+        except Offer.DoesNotExist:
+            raise BadPeermarketTransaction('Cancel Offer Error: No offer found with tx_id='+str(pm_query['offer_tx_id'])+" and peercoin_address="+str(transaction.peercoin_address))
+
+        existing_offer.offer_status = 2 #Canceled by offerer
+        existing_offer.tx_id_status_change = transaction.tx_id
+        existing_offer.block_number_status_change = transaction.block_number_created
+        existing_offer.time_status_change = transaction.time_created
+        existing_offer.save()
+
+    elif pm_query['action'] == 'reject_offer':
+
+        try:
+            existing_offer = Offer.objects.get(tx_id=pm_query['offer_tx_id'])
+        except Offer.DoesNotExist:
+            raise BadPeermarketTransaction('Reject Offer Error: No offer found with tx_id='+str(pm_query['offer_tx_id']))
+
+        #Only allow poster of listing to do this action
+        try:
+            existing_listing = Listing.objects.get(tx_id=existing_offer.listing_tx_id, peercoin_address=transaction.peercoin_address)
+        except Offer.DoesNotExist:
+            raise BadPeermarketTransaction('Reject Offer Error: No listing found with tx_id='+str(existing_offer.listing_tx_id)+" and peercoin_address="+str(transaction.peercoin_address))
+
+        existing_offer.offer_status = 3 #Rejected by lister
+        existing_offer.tx_id_status_change = transaction.tx_id
+        existing_offer.block_number_status_change = transaction.block_number_created
+        existing_offer.time_status_change = transaction.time_created
+        existing_offer.save()
+
+        if pm_query.get('message', False):
+            message_details = {
+                "tx_id": transaction.tx_id,
+                "offer_tx_id": transaction.tx_id,
+                "peercoin_address": transaction.peercoin_address,
+                "block_number_created": transaction.block_number_created,
+                "time_created": transaction.time_created,
+                "message": pm_query['message']
+            }
+            new_message = Message(**message_details)
+            new_message.save()
+
+    elif pm_query['action'] == 'accept_offer':
+
+        try:
+            existing_offer = Offer.objects.get(tx_id=pm_query['offer_tx_id'])
+        except Offer.DoesNotExist:
+            raise BadPeermarketTransaction('Reject Offer Error: No offer found with tx_id='+str(pm_query['offer_tx_id']))
+
+        #Only allow poster of listing to do this action
+        try:
+            existing_listing = Listing.objects.get(tx_id=existing_offer.listing_tx_id, peercoin_address=transaction.peercoin_address)
+        except Offer.DoesNotExist:
+            raise BadPeermarketTransaction('Reject Offer Error: No listing found with tx_id='+str(existing_offer.listing_tx_id)+" and peercoin_address="+str(transaction.peercoin_address))
+
+        existing_offer.offer_status = 4 #Accepted by lister
+        existing_offer.tx_id_status_change = transaction.tx_id
+        existing_offer.block_number_status_change = transaction.block_number_created
+        existing_offer.time_status_change = transaction.time_created
+        existing_offer.save()
+
+        if pm_query.get('message', False):
+            message_details = {
+                "tx_id": transaction.tx_id,
+                "offer_tx_id": transaction.tx_id,
+                "peercoin_address": transaction.peercoin_address,
+                "block_number_created": transaction.block_number_created,
+                "time_created": transaction.time_created,
+                "message": pm_query['message']
+            }
+            new_message = Message(**message_details)
+            new_message.save()
+
+    else:
+        raise BadPeermarketTransaction('Unable to parse pm_query requested in: '+str(pm_query))
 
 def download_payload(rpc_raw, key, from_address):
     found_data = external_db.get_data(key)
@@ -262,44 +255,45 @@ def download_payloads(rpc_raw):
         print "***Pulled new payload:", payload_str
         transaction.pm_payload = payload_str
         transaction.payload_retrieved = True
-
-        try:
-            #If possible, extract action type to get a sense of order/priority.
-            transaction.payload_action = json.loads(payload_str)['action']
-        except:
-            pass
-
         transaction.save()
 
-    #process new listings first
-    for transaction in Transaction.objects.filter(payload_executed=False,payload_action='new_listing').order_by('-time_created'):
-        try:
-            process_payload(transaction, transaction.pm_payload)
-        except BadPeermarketTransaction as e:
-            print e.message
-
-        transaction.payload_executed = True
-        transaction.save()
-
-    #process new offers second
-    for transaction in Transaction.objects.filter(payload_executed=False,payload_action='new_offer').order_by('-time_created'):
-        try:
-            process_payload(transaction, transaction.pm_payload)
-        except BadPeermarketTransaction as e:
-            print e.message
-
-        transaction.payload_executed = True
-        transaction.save()
-
-    #process everything else
+    pm_queries = []
+    transaction_payloads_executed = []
     for transaction in Transaction.objects.filter(payload_executed=False).order_by('-time_created'):
         try:
-            process_payload(transaction, transaction.pm_payload)
-        except BadPeermarketTransaction as e:
-            print e.message
+            for p in json.loads(transaction.pm_payload):
+                pm_queries.append({'query': p, 'transaction':transaction})
+        except:
+            print 'Unable to process json string from payload: '+str(payload_str)
+            #raise BadPeermarketTransaction('Unable to process json string from payload: '+str(payload_str))
 
-        transaction.payload_executed = True
-        transaction.save()
+        transaction_payloads_executed.append(transaction.tx_id)
+
+    #Process New Listings First
+    for pm_query_data in pm_queries:
+        if pm_query_data['query']['action'] == 'new_listing':
+            try:
+                process_pm_query(pm_query_data['transaction'], pm_query_data['query'])
+            except BadPeermarketTransaction as e:
+                print e.message
+
+    #Process New Offers Second
+    for pm_query_data in pm_queries:
+        if pm_query_data['query']['action'] == 'new_offer':
+            try:
+                process_pm_query(pm_query_data['transaction'], pm_query_data['query'])
+            except BadPeermarketTransaction as e:
+                print e.message
+
+    #Process New Offers Second
+    for pm_query_data in pm_queries:
+        if pm_query_data['query']['action'] not in ['new_listing', 'new_offer']:
+            try:
+                process_pm_query(pm_query_data['transaction'], pm_query_data['query'])
+            except BadPeermarketTransaction as e:
+                print e.message
+
+    Transaction.objects.filter(tx_id__in=transaction_payloads_executed).update(payload_executed=True)
 
 def get_service_status():
     """
