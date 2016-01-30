@@ -116,7 +116,6 @@ def process_payload(transaction, payload_str):
                 new_message = Message(**message_details)
                 new_message.save()
 
-
         elif db_query['action'] == 'update_offer':
 
             existing_offer = Offer.objects.get(listing_tx_id=db_query['listing_tx_id'])
@@ -151,6 +150,15 @@ def process_payload(transaction, payload_str):
                 }
                 new_message = Message(**message_details)
                 new_message.save()
+
+        elif db_query['action'] == 'cancel_offer':
+
+            existing_offer = Offer.objects.get(listing_tx_id=db_query['listing_tx_id'])
+            existing_offer.offer_status = 2 #Canceled by offerer
+            existing_offer.tx_id_status_change = transaction.tx_id
+            existing_offer.block_number_status_change = transaction.block_number_created
+            existing_offer.time_status_change = transaction.time_created
+            existing_offer.save()
 
         else:
             raise BadPeermarketTransaction('Unable to parse db_query requested in: '+str(db_query))

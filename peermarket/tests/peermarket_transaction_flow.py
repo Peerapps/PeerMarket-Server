@@ -4,7 +4,7 @@ sys.path.append('../../')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'peerapps.settings'
 import django
 django.setup()
-from peermarket.errors import PeercoinError, PeerMarketError
+from peermarket.errors import PeercoinError
 from bitcoinrpc.authproxy import JSONRPCException, AuthServiceProxy as rpcRawProxy
 from bitcoin.rpc import Proxy as rpcProcessedProxy
 import external_db
@@ -12,8 +12,7 @@ import helpers, blockchain_func
 #from django.test import TestCase
 import json
 
-def create_listing():
-    from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+def create_listing(from_address):
     payload = json.dumps([
         {
             'action': 'new_listing',
@@ -24,16 +23,15 @@ def create_listing():
             'message': "The exchange will be made like so: You create a Neopets trade, I'll bid the currency on it, you accept. Contact me via Signal @ 212 867 5309"
         }
     ])
-    submit_api_call(from_address, payload)
+    return submit_api_call(from_address, payload)
 
-def update_listing():
-    from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+def update_listing(from_address, listing_tx_id):
     payload = json.dumps([
         {
             'action': 'update_listing',
             'category': 'Neopets2',
             'subcategory': 'Neopoints2',
-            'listing_tx_id': 'MISSING',
+            'listing_tx_id': listing_tx_id,
             'quantity': '2222',
             'requested_peercoin': '22',
             'message': "I'm a second message on a listing!"
@@ -41,12 +39,11 @@ def update_listing():
     ])
     submit_api_call(from_address, payload)
 
-def create_offer():
-    from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+def create_offer(from_address, listing_tx_id):
     payload = json.dumps([
         {
             'action': 'new_offer',
-            'listing_tx_id': 'MISSING',
+            'listing_tx_id': listing_tx_id,
             'quantity': '1000000',
             'offered_peercoin': '10',
             'message': "I'm interested, let's do it. If chosen, I'll contact you on signal."
@@ -54,15 +51,24 @@ def create_offer():
     ])
     submit_api_call(from_address, payload)
 
-def update_offer():
-    from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+def update_offer(from_address, listing_tx_id):
     payload = json.dumps([
         {
             'action': 'update_offer',
-            'listing_tx_id': 'MISSING',
+            'listing_tx_id': listing_tx_id,
             'quantity': '1000000',
             'offered_peercoin': '11',
             'message': "I upped my offer because I really want your thing."
+        }
+    ])
+    submit_api_call(from_address, payload)
+
+def cancel_offer(from_address, listing_tx_id):
+    #TODO incomplete.
+    payload = json.dumps([
+        {
+            'action': 'cancel_offer',
+            'listing_tx_id': listing_tx_id
         }
     ])
     submit_api_call(from_address, payload)
@@ -94,9 +100,14 @@ def submit_api_call(from_address, payload):
     print "op_return_data", op_return_data
 
     rpc_processed = rpcProcessedProxy()
-    blockchain_func.submit_opreturn(rpc_raw, rpc_processed, from_address, op_return_data)
+    tx_id = blockchain_func.submit_opreturn(rpc_raw, rpc_processed, from_address, op_return_data)
 
     print "success"
+    return tx_id
 
-create_listing()
-create_offer()
+from_address = "mndvZGbYdUCWTC3JYP2eyvJEHxYLds4UWn"
+listing_tx_id = create_listing(from_address)
+update_listing(from_address, listing_tx_id)
+create_offer(from_address, listing_tx_id)
+update_offer(from_address, listing_tx_id)
+cancel_offer(from_address, listing_tx_id)
