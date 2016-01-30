@@ -134,6 +134,6 @@ def submit_opreturn(rpc_raw, rpc_connection, address, data):
 
     #print b2x(tx.serialize())
     #print len(tx.serialize()), 'bytes'
-    sent_tx_id = rpc_connection.sendrawtransaction(tx)
-    print "sent_tx_id", b2lx(sent_tx_id)
+    sent_tx_id = b2lx(rpc_connection.sendrawtransaction(tx))
+    print "sent_tx_id", sent_tx_id
     return sent_tx_id
